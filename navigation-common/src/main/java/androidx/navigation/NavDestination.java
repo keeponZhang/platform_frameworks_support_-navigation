@@ -53,104 +53,11 @@ import java.util.Map;
  * on different destinations that fill similar roles allow application code to navigate based
  * on semantic intent.</p>
  *
- * <p>Each destination has a set of {@link #getArguments() arguments} that will
+ * <p>Each destination has a set of {@link #getDefaultArguments() default arguments} that will
  * be applied when {@link NavController#navigate(int, Bundle) navigating} to that destination.
- * Any default values for those arguments can be overridden at the time of navigation.</p>
+ * These arguments can be overridden at the time of navigation.</p>
  */
 public class NavDestination {
-    /**
-     * This optional annotation allows tooling to offer auto-complete for the
-     * <code>android:name</code> attribute. This should match the class type passed to
-     * {@link #parseClassFromName(Context, String, Class)} when parsing the
-     * <code>android:name</code> attribute.
-     */
-    @Retention(CLASS)
-    @Target({TYPE})
-    @SuppressWarnings("UnknownNullness") // TODO https://issuetracker.google.com/issues/112185120
-    public @interface ClassType {
-        Class<?> value();
-    }
-
-    static class DeepLinkMatch implements Comparable<DeepLinkMatch> {
-        @NonNull
-        private final NavDestination mDestination;
-        @NonNull
-        private final Bundle mMatchingArgs;
-        private final boolean mIsExactDeepLink;
-
-        DeepLinkMatch(@NonNull NavDestination destination, @NonNull Bundle matchingArgs,
-                boolean isExactDeepLink) {
-            mDestination = destination;
-            mMatchingArgs = matchingArgs;
-            mIsExactDeepLink = isExactDeepLink;
-        }
-
-        @NonNull
-        NavDestination getDestination() {
-            return mDestination;
-        }
-
-        @NonNull
-        Bundle getMatchingArgs() {
-            return mMatchingArgs;
-        }
-
-        @Override
-        public int compareTo(DeepLinkMatch other) {
-            // Prefer exact deep links
-            if (mIsExactDeepLink && !other.mIsExactDeepLink) {
-                return 1;
-            } else if (!mIsExactDeepLink && other.mIsExactDeepLink) {
-                return -1;
-            }
-            // Prefer matches with more matching arguments
-            return mMatchingArgs.size() - other.mMatchingArgs.size();
-        }
-    }
-
-    private static final HashMap<String, Class<?>> sClasses = new HashMap<>();
-
-    /**
-     * Parse the class associated with this destination from a raw name, generally extracted
-     * from the <code>android:name</code> attribute added to the destination's XML. This should
-     * be the class providing the visual representation of the destination that the
-     * user sees after navigating to this destination.
-     * <p>
-     * This method does name -> Class caching and should be strongly preferred over doing your
-     * own parsing if your {@link Navigator} supports the <code>android:name</code> attribute to
-     * give consistent behavior across all Navigators.
-     *
-     * @param context Context providing the package name for use with relative class names and the
-     *                ClassLoader
-     * @param name Absolute or relative class name. Null names will be ignored.
-     * @param expectedClassType The expected class type
-     * @return The parsed class
-     * @throws IllegalArgumentException if the class is not found in the provided Context's
-     * ClassLoader or if the class is not of the expected type
-     */
-    @SuppressWarnings("unchecked")
-    @NonNull
-    protected static <C> Class<? extends C> parseClassFromName(@NonNull Context context,
-            @NonNull String name,
-            @NonNull Class<? extends C> expectedClassType) {
-        if (name.charAt(0) == '.') {
-            name = context.getPackageName() + name;
-        }
-        Class<?> clazz = sClasses.get(name);
-        if (clazz == null) {
-            try {
-                clazz = Class.forName(name, true, context.getClassLoader());
-                sClasses.put(name, clazz);
-            } catch (ClassNotFoundException e) {
-                throw new IllegalArgumentException(e);
-            }
-        }
-        if (!expectedClassType.isAssignableFrom(clazz)) {
-            throw new IllegalArgumentException(name + " must be a subclass of "
-                    + expectedClassType);
-        }
-        return (Class<? extends C>) clazz;
-    }
 
     /**
      * Retrieve a suitable display name for a given id.
@@ -168,44 +75,19 @@ public class NavDestination {
         }
     }
 
-    private final String mNavigatorName;
+    private final Navigator mNavigator;
     private NavGraph mParent;
     private int mId;
-    private String mIdName;
     private CharSequence mLabel;
+    private Bundle mDefaultArgs;
     private ArrayList<NavDeepLink> mDeepLinks;
     private SparseArrayCompat<NavAction> mActions;
-    private HashMap<String, NavArgument> mArguments;
-
-    /**
-     * Get the arguments supported by this destination. Returns a read-only map of argument names
-     * to {@link NavArgument} objects that can be used to check the type, default value
-     * and nullability of the argument.
-     * <p>
-     * To add and remove arguments for this NavDestination
-     * use {@link #addArgument(String, NavArgument)} and {@link #removeArgument(String)}.
-     * @return Read-only map of argument names to arguments.
-     */
-    @NonNull
-    public final Map<String, NavArgument> getArguments() {
-        return mArguments == null ? Collections.<String, NavArgument>emptyMap()
-                : Collections.unmodifiableMap(mArguments);
-    }
 
     /**
      * NavDestinations should be created via {@link Navigator#createDestination}.
-     * <p>
-     * This constructor requires that the given Navigator has a {@link Navigator.Name} annotation.
      */
     public NavDestination(@NonNull Navigator<? extends NavDestination> navigator) {
-        this(NavigatorProvider.getNameForNavigator(navigator.getClass()));
-    }
-
-    /**
-     * NavDestinations should be created via {@link Navigator#createDestination}.
-     */
-    public NavDestination(@NonNull String navigatorName) {
-        mNavigatorName = navigatorName;
+        mNavigator = navigator;
     }
 
     /**
@@ -219,12 +101,11 @@ public class NavDestination {
         final TypedArray a = context.getResources().obtainAttributes(attrs,
                 R.styleable.Navigator);
         setId(a.getResourceId(R.styleable.Navigator_android_id, 0));
-        mIdName = getDisplayName(context, mId);
         setLabel(a.getText(R.styleable.Navigator_android_label));
         a.recycle();
     }
 
-    final void setParent(NavGraph parent) {
+    void setParent(NavGraph parent) {
         mParent = parent;
     }
 
@@ -234,7 +115,7 @@ public class NavDestination {
      * @return
      */
     @Nullable
-    public final NavGraph getParent() {
+    public NavGraph getParent() {
         return mParent;
     }
 
@@ -245,7 +126,7 @@ public class NavDestination {
      * @return this destination's ID
      */
     @IdRes
-    public final int getId() {
+    public int getId() {
         return mId;
     }
 
@@ -255,17 +136,8 @@ public class NavDestination {
      *
      * @param id this destination's new ID
      */
-    public final void setId(@IdRes int id) {
+    public void setId(@IdRes int id) {
         mId = id;
-        mIdName = null;
-    }
-
-    @NonNull
-    String getDisplayName() {
-        if (mIdName == null) {
-            mIdName = Integer.toString(mId);
-        }
-        return mIdName;
     }
 
     /**
@@ -273,7 +145,7 @@ public class NavDestination {
      *
      * @param label A descriptive label of this destination.
      */
-    public final void setLabel(@Nullable CharSequence label) {
+    public void setLabel(@Nullable CharSequence label) {
         mLabel = label;
     }
 
@@ -281,43 +153,54 @@ public class NavDestination {
      * Gets the descriptive label of this destination.
      */
     @Nullable
-    public final CharSequence getLabel() {
+    public CharSequence getLabel() {
         return mLabel;
     }
 
     /**
-     * Returns the name associated with this destination's {@link Navigator}.
+     * Returns the destination's {@link Navigator}.
      *
-     * @return the name associated with this destination's navigator
+     * @return this destination's navigator
      */
     @NonNull
-    public final String getNavigatorName() {
-        return mNavigatorName;
+    public Navigator getNavigator() {
+        return mNavigator;
     }
 
     /**
-     * Checks the given deep link {@link Uri}, and determines whether it matches a Uri pattern added
-     * to the destination by a call to {@link #addDeepLink(String)} . It returns <code>true</code>
-     * if the deep link is a valid match, and <code>false</code> otherwise.
+     * Returns the destination's default arguments bundle.
      *
-     * <p>
-     * This should be called prior to {@link NavController#navigate(Uri)} to ensure the deep link
-     * can be navigated to.
-     * </p>
-     *
-     * @param deepLink to the destination reachable from the current NavGraph
-     * @return True if the deepLink exists for the destination.
-     * @see #addDeepLink(String)
-     * @see NavController#navigate(Uri)
+     * @return the default arguments bundle
      */
-    public boolean hasDeepLink(@NonNull Uri deepLink) {
-        return matchDeepLink(deepLink) != null;
+    public @NonNull Bundle getDefaultArguments() {
+        if (mDefaultArgs == null) {
+            mDefaultArgs = new Bundle();
+        }
+        return mDefaultArgs;
+    }
+
+    /**
+     * Sets the destination's default arguments bundle.
+     *
+     * @param args the new bundle to set
+     */
+    public void setDefaultArguments(@Nullable Bundle args) {
+        mDefaultArgs = args;
+    }
+
+    /**
+     * Merges a bundle of arguments into the current default arguments for this destination.
+     * New values with the same keys will replace old values with those keys.
+     *
+     * @param args arguments to add
+     */
+    public void addDefaultArguments(@NonNull Bundle args) {
+        getDefaultArguments().putAll(args);
     }
 
     /**
      * Add a deep link to this destination. Matching Uris sent to
-     * {@link NavController#handleDeepLink(Intent)} or {@link NavController#navigate(Uri)} will
-     * trigger navigating to this destination.
+     * {@link NavController#onHandleDeepLink(Intent)} will trigger navigating to this destination.
      * <p>
      * In addition to a direct Uri match, the following features are supported:
      * <ul>
@@ -340,10 +223,9 @@ public class NavDestination {
      * Programmatically added deep links should use {@link Context#getPackageName()} directly
      * when constructing the uriPattern.
      * @param uriPattern The uri pattern to add as a deep link
-     * @see NavController#handleDeepLink(Intent)
-     * @see NavController#navigate(Uri)
+     * @see NavController#onHandleDeepLink(Intent)
      */
-    public final void addDeepLink(@NonNull String uriPattern) {
+    public void addDeepLink(@NonNull String uriPattern) {
         if (mDeepLinks == null) {
             mDeepLinks = new ArrayList<>();
         }
@@ -357,22 +239,17 @@ public class NavDestination {
      * extracted from the Uri, or null if no match was found.
      */
     @Nullable
-    DeepLinkMatch matchDeepLink(@NonNull Uri uri) {
+    Pair<NavDestination, Bundle> matchDeepLink(@NonNull Uri uri) {
         if (mDeepLinks == null) {
             return null;
         }
-        DeepLinkMatch bestMatch = null;
         for (NavDeepLink deepLink : mDeepLinks) {
-            Bundle matchingArguments = deepLink.getMatchingArguments(uri, getArguments());
+            Bundle matchingArguments = deepLink.getMatchingArguments(uri);
             if (matchingArguments != null) {
-                DeepLinkMatch newMatch = new DeepLinkMatch(this, matchingArguments,
-                        deepLink.isExactDeepLink());
-                if (bestMatch == null || newMatch.compareTo(bestMatch) > 0) {
-                    bestMatch = newMatch;
-                }
+                return Pair.create(this, matchingArguments);
             }
         }
-        return bestMatch;
+        return null;
     }
 
     /**
@@ -383,28 +260,16 @@ public class NavDestination {
     @NonNull
     int[] buildDeepLinkIds() {
         ArrayDeque<NavDestination> hierarchy = new ArrayDeque<>();
-        NavDestination current = this;
-        do {
-            NavGraph parent = current.getParent();
-            if (parent == null || parent.getStartDestination() != current.getId()) {
-                hierarchy.addFirst(current);
-            }
-            current = parent;
-        } while (current != null);
+        hierarchy.add(this);
+        while (hierarchy.peekFirst().getParent() != null) {
+            hierarchy.addFirst(hierarchy.peekFirst().getParent());
+        }
         int[] deepLinkIds = new int[hierarchy.size()];
         int index = 0;
         for (NavDestination destination : hierarchy) {
             deepLinkIds[index++] = destination.getId();
         }
         return deepLinkIds;
-    }
-
-    /**
-     * @return Whether this NavDestination supports outgoing actions
-     * @see #putAction(int, NavAction)
-     */
-    boolean supportsActions() {
-        return true;
     }
 
     /**
@@ -416,7 +281,7 @@ public class NavDestination {
      * @return destination ID mapped to the given action id, or 0 if none
      */
     @Nullable
-    public final NavAction getAction(@IdRes int id) {
+    public NavAction getAction(@IdRes int id) {
         NavAction destination = mActions == null ? null : mActions.get(id);
         // Search the parent for the given action if it is not found in this destination
         return destination != null
@@ -430,7 +295,7 @@ public class NavDestination {
      * @param actionId action ID to bind
      * @param destId destination ID for the given action
      */
-    public final void putAction(@IdRes int actionId, @IdRes int destId) {
+    public void putAction(@IdRes int actionId, @IdRes int destId) {
         putAction(actionId, new NavAction(destId));
     }
 
@@ -440,13 +305,7 @@ public class NavDestination {
      * @param actionId action ID to bind
      * @param action action to associate with this action ID
      */
-    public final void putAction(@IdRes int actionId, @NonNull NavAction action) {
-        if (!supportsActions()) {
-            throw new UnsupportedOperationException("Cannot add action " + actionId + " to "
-                    + this + " as it does not support actions, indicating that it is a "
-                    + "terminal destination in your navigation graph and will never trigger "
-                    + "actions.");
-        }
+    public void putAction(@IdRes int actionId, @NonNull NavAction action) {
         if (actionId == 0) {
             throw new IllegalArgumentException("Cannot have an action with actionId 0");
         }
@@ -461,7 +320,7 @@ public class NavDestination {
      *
      * @param actionId action ID to remove
      */
-    public final void removeAction(@IdRes int actionId) {
+    public void removeAction(@IdRes int actionId) {
         if (mActions == null) {
             return;
         }
@@ -469,58 +328,23 @@ public class NavDestination {
     }
 
     /**
-     * Sets an argument type for an argument name
+     * Navigates to this destination.
      *
-     * @param argumentName argument object to associate with destination
-     */
-    public final void addArgument(@NonNull String argumentName, @NonNull NavArgument argument) {
-        if (mArguments == null) {
-            mArguments = new HashMap<>();
-        }
-        mArguments.put(argumentName, argument);
-    }
-
-    /**
-     * Unsets the argument type for an argument name.
+     * <p>Uses the {@link #getNavigator() configured navigator} to navigate to this destination.
+     * Apps should not call this directly, instead use {@link NavController}'s navigation methods
+     * to ensure consistent back stack tracking and behavior.</p>
      *
-     * @param argumentName argument to remove
+     * @param args arguments to the new destination
+     * @param navOptions options for navigation
      */
-    public final void removeArgument(@NonNull String argumentName) {
-        if (mArguments == null) {
-            return;
-        }
-        mArguments.remove(argumentName);
-    }
-
-    /**
-     * Combines the default arguments for this destination with the arguments provided
-     * to construct the final set of arguments that should be used to navigate
-     * to this destination.
-     */
-    @Nullable
-    Bundle addInDefaultArgs(@Nullable Bundle args) {
-        if (args == null && (mArguments == null || mArguments.isEmpty())) {
-            return null;
-        }
-        Bundle defaultArgs = new Bundle();
-        if (mArguments != null) {
-            for (Map.Entry<String, NavArgument> argument : mArguments.entrySet()) {
-                argument.getValue().putDefaultValue(argument.getKey(), defaultArgs);
-            }
-        }
+    @SuppressWarnings("unchecked")
+    public void navigate(@Nullable Bundle args, @Nullable NavOptions navOptions) {
+        Bundle defaultArgs = getDefaultArguments();
+        Bundle finalArgs = new Bundle();
+        finalArgs.putAll(defaultArgs);
         if (args != null) {
-            defaultArgs.putAll(args);
-            if (mArguments != null) {
-                for (Map.Entry<String, NavArgument> argument : mArguments.entrySet()) {
-                    if (!argument.getValue().verify(argument.getKey(), args)) {
-                        throw new IllegalArgumentException(
-                                "Wrong argument type for '" + argument.getKey()
-                                        + "' in argument bundle. "
-                                        + argument.getValue().getType().getName() + " expected.");
-                    }
-                }
-            }
+            finalArgs.putAll(args);
         }
-        return defaultArgs;
+        mNavigator.navigate(this, finalArgs, navOptions);
     }
 }

@@ -27,17 +27,15 @@ import androidx.annotation.Nullable;
  */
 @Navigator.Name("navigation")
 public class NavGraphNavigator extends Navigator<NavGraph> {
-    private final NavigatorProvider mNavigatorProvider;
+    private Context mContext;
 
     /**
      * Construct a Navigator capable of routing incoming navigation requests to the proper
      * destination within a {@link NavGraph}.
-     *
-     * @param navigatorProvider NavigatorProvider used to retrieve the correct
-     *                          {@link Navigator} to navigate to the start destination
+     * @param context
      */
-    public NavGraphNavigator(@NonNull NavigatorProvider navigatorProvider) {
-        mNavigatorProvider = navigatorProvider;
+    public NavGraphNavigator(@NonNull Context context) {
+        mContext = context;
     }
 
     /**
@@ -50,30 +48,29 @@ public class NavGraphNavigator extends Navigator<NavGraph> {
         return new NavGraph(this);
     }
 
-    @Nullable
     @Override
-    public NavDestination navigate(@NonNull NavGraph destination, @Nullable Bundle args,
-            @Nullable NavOptions navOptions, @Nullable Extras navigatorExtras) {
+    public void navigate(@NonNull NavGraph destination, @Nullable Bundle args,
+            @Nullable NavOptions navOptions) {
         int startId = destination.getStartDestination();
         if (startId == 0) {
             throw new IllegalStateException("no start destination defined via"
                     + " app:startDestination for "
-                    + destination.getDisplayName());
+                    + (destination.getId() != 0
+                            ? NavDestination.getDisplayName(mContext, destination.getId())
+                            : "the root navigation"));
         }
         NavDestination startDestination = destination.findNode(startId, false);
         if (startDestination == null) {
-            final String dest = destination.getStartDestDisplayName();
+            final String dest = NavDestination.getDisplayName(mContext, startId);
             throw new IllegalArgumentException("navigation destination " + dest
                     + " is not a direct child of this NavGraph");
         }
-        Navigator<NavDestination> navigator = mNavigatorProvider.getNavigator(
-                startDestination.getNavigatorName());
-        return navigator.navigate(startDestination, startDestination.addInDefaultArgs(args),
-                navOptions, navigatorExtras);
+        dispatchOnNavigatorNavigated(destination.getId(), BACK_STACK_DESTINATION_ADDED);
+        startDestination.navigate(args, navOptions);
     }
 
     @Override
     public boolean popBackStack() {
-        return true;
+        return false;
     }
 }

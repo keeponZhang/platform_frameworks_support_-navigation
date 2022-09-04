@@ -70,10 +70,8 @@ public class NavigatorProvider {
      * @see #addNavigator(Navigator)
      */
     @NonNull
-    public final <T extends Navigator<?>> T getNavigator(@NonNull Class<T> navigatorClass) {
-        String name = getNameForNavigator(navigatorClass);
-        return getNavigator(name);
-    }
+    <D extends NavDestination, T extends Navigator<? extends D>> T getNavigator(
+            @NonNull Class<T> navigatorClass);
 
     /**
      * Retrieves a registered {@link Navigator} by name.
@@ -85,21 +83,9 @@ public class NavigatorProvider {
      *
      * @see #addNavigator(String, Navigator)
      */
-    @SuppressWarnings("unchecked")
-    @CallSuper
     @NonNull
-    public <T extends Navigator<?>> T getNavigator(@NonNull String name) {
-        if (!validateName(name)) {
-            throw new IllegalArgumentException("navigator name cannot be an empty string");
-        }
-
-        Navigator<? extends NavDestination> navigator = mNavigators.get(name);
-        if (navigator == null) {
-            throw new IllegalStateException("Could not find Navigator with name \"" + name
-                    + "\". You must call NavController.addNavigator() for each navigation type.");
-        }
-        return (T) navigator;
-    }
+    <D extends NavDestination, T extends Navigator<? extends D>> T getNavigator(
+            @NonNull String name);
 
     /**
      * Register a navigator using the name provided by the
@@ -112,12 +98,8 @@ public class NavigatorProvider {
      * {@link Navigator.Name Navigator.Name annotation}, if any
      */
     @Nullable
-    public final Navigator<? extends NavDestination> addNavigator(
-            @NonNull Navigator<? extends NavDestination> navigator) {
-        String name = getNameForNavigator(navigator.getClass());
-
-        return addNavigator(name, navigator);
-    }
+    Navigator<? extends NavDestination> addNavigator(
+            @NonNull Navigator<? extends NavDestination> navigator);
 
     /**
      * Register a navigator by name. {@link NavDestination destinations} may refer to any
@@ -128,17 +110,7 @@ public class NavigatorProvider {
      * @param navigator navigator to add
      * @return the previously added Navigator for the given name, if any
      */
-    @CallSuper
     @Nullable
-    public Navigator<? extends NavDestination> addNavigator(@NonNull String name,
-            @NonNull Navigator<? extends NavDestination> navigator) {
-        if (!validateName(name)) {
-            throw new IllegalArgumentException("navigator name cannot be an empty string");
-        }
-        return mNavigators.put(name, navigator);
-    }
-
-    Map<String, Navigator<? extends NavDestination>> getNavigators() {
-        return mNavigators;
-    }
+    Navigator<? extends NavDestination> addNavigator(@NonNull String name,
+            @NonNull Navigator<? extends NavDestination> navigator);
 }

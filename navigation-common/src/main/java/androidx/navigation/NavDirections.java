@@ -38,6 +38,6 @@ public interface NavDirections {
     /**
      * Returns arguments to pass to the destination
      */
-    @NonNull
+    @Nullable
     Bundle getArguments();
 }
