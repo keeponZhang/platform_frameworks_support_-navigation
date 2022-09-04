@@ -16,31 +16,24 @@
 
 package androidx.navigation;
 
-import static java.lang.annotation.ElementType.TYPE;
-import static java.lang.annotation.RetentionPolicy.CLASS;
-
 import android.content.Context;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.annotation.CallSuper;
+import android.support.annotation.IdRes;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
+import android.support.v4.util.Pair;
+import android.support.v4.util.SparseArrayCompat;
 import android.util.AttributeSet;
 
-import androidx.annotation.CallSuper;
-import androidx.annotation.IdRes;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.collection.SparseArrayCompat;
-import androidx.navigation.common.R;
-
-import java.lang.annotation.Retention;
-import java.lang.annotation.Target;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
+
+import androidx.navigation.common.R;
 
 /**
  * NavDestination represents one node within an overall navigation graph.

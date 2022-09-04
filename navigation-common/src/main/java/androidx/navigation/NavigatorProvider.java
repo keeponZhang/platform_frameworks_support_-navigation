@@ -17,45 +17,15 @@
 package androidx.navigation;
 
 import android.annotation.SuppressLint;
-
-import androidx.annotation.CallSuper;
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-
-import java.util.HashMap;
-import java.util.Map;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 /**
  * A NavigationProvider stores a set of {@link Navigator}s that are valid ways to navigate
  * to a destination.
  */
 @SuppressLint("TypeParameterUnusedInFormals")
-public class NavigatorProvider {
-    private static final HashMap<Class<?>, String> sAnnotationNames = new HashMap<>();
-
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private static boolean validateName(String name) {
-        return name != null && !name.isEmpty();
-    }
-
-    @NonNull
-    static String getNameForNavigator(@NonNull Class<? extends Navigator> navigatorClass) {
-        String name = sAnnotationNames.get(navigatorClass);
-        if (name == null) {
-            Navigator.Name annotation = navigatorClass.getAnnotation(Navigator.Name.class);
-            name = annotation != null ? annotation.value() : null;
-            if (!validateName(name)) {
-                throw new IllegalArgumentException("No @Navigator.Name annotation found for "
-                        + navigatorClass.getSimpleName());
-            }
-            sAnnotationNames.put(navigatorClass, name);
-        }
-        return name;
-    }
-
-    private final HashMap<String, Navigator<? extends NavDestination>> mNavigators =
-            new HashMap<>();
-
+public interface NavigatorProvider {
     /**
      * Retrieves a registered {@link Navigator} using the name provided by the
      * {@link Navigator.Name Navigator.Name annotation}.

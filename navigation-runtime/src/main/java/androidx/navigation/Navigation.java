@@ -18,13 +18,13 @@ package androidx.navigation;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.view.View;
-import android.view.ViewParent;
-
 import androidx.annotation.IdRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
+
+import android.view.View;
+import android.view.ViewParent;
 
 import java.lang.ref.WeakReference;
 
@@ -35,7 +35,7 @@ import java.lang.ref.WeakReference;
  * various common places in your application, or for performing navigation in response to
  * UI events.</p>
  */
-public final class Navigation {
+public class Navigation {
     // No instances. Static utilities only.
     private Navigation() {
     }
@@ -69,7 +69,7 @@ public final class Navigation {
      *
      * <p>This method will locate the {@link NavController} associated with this view.
      * This is automatically populated for views that are managed by a {@link NavHost}
-     * and is intended for use by various {@link android.view.View.OnClickListener listener}
+     * and is intended for use by various {@link View.OnClickListener listener}
      * interfaces.</p>
      *
      * @param view the view to search from
@@ -87,7 +87,7 @@ public final class Navigation {
     }
 
     /**
-     * Create an {@link android.view.View.OnClickListener} for navigating
+     * Create an {@link View.OnClickListener} for navigating
      * to a destination. This supports both navigating via an
      * {@link NavDestination#getAction(int) action} and directly navigating to a destination.
      *
@@ -101,7 +101,7 @@ public final class Navigation {
     }
 
     /**
-     * Create an {@link android.view.View.OnClickListener} for navigating
+     * Create an {@link View.OnClickListener} for navigating
      * to a destination. This supports both navigating via an
      * {@link NavDestination#getAction(int) action} and directly navigating to a destination.
      *
@@ -117,24 +117,6 @@ public final class Navigation {
             @Override
             public void onClick(View view) {
                 findNavController(view).navigate(resId, args);
-            }
-        };
-    }
-
-    /**
-     * Create an {@link android.view.View.OnClickListener} for navigating
-     * to a destination via a generated {@link NavDirections}.
-     *
-     * @param directions directions that describe this navigation operation
-     * @return a new click listener for setting on an arbitrary view
-     */
-    @NonNull
-    public static View.OnClickListener createNavigateOnClickListener(
-            @NonNull final NavDirections directions) {
-        return new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                findNavController(view).navigate(directions);
             }
         };
     }

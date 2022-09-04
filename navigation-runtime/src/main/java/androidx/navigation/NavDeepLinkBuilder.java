@@ -22,7 +22,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-
 import androidx.annotation.IdRes;
 import androidx.annotation.NavigationRes;
 import androidx.annotation.NonNull;
@@ -50,13 +49,12 @@ import java.util.ArrayDeque;
  * You can construct an instance directly with {@link #NavDeepLinkBuilder(Context)} or build one
  * using an existing {@link NavController} via {@link NavController#createDeepLink()}.
  */
-public final class NavDeepLinkBuilder {
+public class NavDeepLinkBuilder {
     private final Context mContext;
     private final Intent mIntent;
 
     private NavGraph mGraph;
     private int mDestId;
-    private Bundle mArgs;
 
     /**
      * Construct a new NavDeepLinkBuilder.
@@ -123,16 +121,12 @@ public final class NavDeepLinkBuilder {
      */
     @NonNull
     public NavDeepLinkBuilder setGraph(@NavigationRes int navGraphId) {
-        return setGraph(new NavInflater(mContext, new PermissiveNavigatorProvider())
+        return setGraph(new NavInflater(mContext, new PermissiveNavigatorProvider(mContext))
                 .inflate(navGraphId));
     }
 
     /**
      * Sets the graph that contains the {@link #setDestination(int) deep link destination}.
-     * <p>
-     * If you do not have access to a {@link NavController}, you can create a
-     * {@link NavigatorProvider} and use that to programmatically construct a navigation
-     * graph or use {@link NavInflater#NavInflater(Context, NavigatorProvider) NavInflater}.
      *
      * @param navGraph The {@link NavGraph} containing the deep link destination
      * @return this object for chaining
@@ -190,7 +184,6 @@ public final class NavDeepLinkBuilder {
      */
     @NonNull
     public NavDeepLinkBuilder setArguments(@Nullable Bundle args) {
-        mArgs = args;
         mIntent.putExtra(NavController.KEY_DEEP_LINK_EXTRAS, args);
         return this;
     }
@@ -248,16 +241,8 @@ public final class NavDeepLinkBuilder {
      */
     @NonNull
     public PendingIntent createPendingIntent() {
-        int requestCode = 0;
-        if (mArgs != null) {
-            for (String key: mArgs.keySet()) {
-                Object value = mArgs.get(key);
-                requestCode = 31 * requestCode + (value != null ? value.hashCode() : 0);
-            }
-        }
-        requestCode = 31 * requestCode + mDestId;
         return createTaskStackBuilder()
-                .getPendingIntent(requestCode, PendingIntent.FLAG_UPDATE_CURRENT);
+                .getPendingIntent(mDestId, PendingIntent.FLAG_UPDATE_CURRENT);
     }
 
     /**
@@ -266,22 +251,18 @@ public final class NavDeepLinkBuilder {
      * information.
      */
     @SuppressWarnings("unchecked")
-    private static class PermissiveNavigatorProvider extends NavigatorProvider {
+    private static class PermissiveNavigatorProvider extends SimpleNavigatorProvider {
         /**
          * A Navigator that only parses the {@link NavDestination} attributes.
          */
         private final Navigator<NavDestination> mDestNavigator = new Navigator<NavDestination>() {
-            @NonNull
             @Override
             public NavDestination createDestination() {
-                return new NavDestination("permissive");
+                return new NavDestination(this);
             }
 
-            @Nullable
             @Override
-            public NavDestination navigate(@NonNull NavDestination destination,
-                    @Nullable Bundle args, @Nullable NavOptions navOptions,
-                    @Nullable Extras navigatorExtras) {
+            public void navigate(NavDestination destination, Bundle args, NavOptions navOptions) {
                 throw new IllegalStateException("navigate is not supported");
             }
 
@@ -291,8 +272,8 @@ public final class NavDeepLinkBuilder {
             }
         };
 
-        PermissiveNavigatorProvider() {
-            addNavigator(new NavGraphNavigator(this));
+        PermissiveNavigatorProvider(Context context) {
+            addNavigator(new NavGraphNavigator(context));
         }
 
         @NonNull
