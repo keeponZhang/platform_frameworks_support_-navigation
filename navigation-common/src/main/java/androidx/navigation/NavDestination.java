@@ -22,17 +22,17 @@ import android.content.res.Resources;
 import android.content.res.TypedArray;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.annotation.CallSuper;
-import android.support.annotation.IdRes;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
-import android.support.v4.util.Pair;
-import android.support.v4.util.SparseArrayCompat;
+import androidx.annotation.CallSuper;
+import androidx.annotation.IdRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import android.util.AttributeSet;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 
+import androidx.collection.SparseArrayCompat;
+import androidx.core.util.Pair;
 import androidx.navigation.common.R;
 
 /**
@@ -338,6 +338,7 @@ public class NavDestination {
         if (args != null) {
             finalArgs.putAll(args);
         }
+        // FragmentNavigator.navigate的方法。
         mNavigator.navigate(this, finalArgs, navOptions);
     }
 }

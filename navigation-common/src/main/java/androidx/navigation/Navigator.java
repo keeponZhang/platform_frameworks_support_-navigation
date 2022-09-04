@@ -23,10 +23,12 @@ import static java.lang.annotation.RetentionPolicy.SOURCE;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.annotation.IdRes;
-import android.support.annotation.IntDef;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.IdRes;
+import androidx.annotation.IntDef;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+
+import androidx.annotation.NonNull;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
@@ -53,6 +55,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  *           Examples include information about an intent to navigate to other activities,
  *           or a fragment class name to instantiate and swap to a new fragment.
  */
+// 3.其中Navigator类的作用是：能够实例化对应的NavDestination，并且能够实现导航功能，拥有自己的回退栈。
+//     构建NavGraph，在构建NavController的时候，我们还调用了NavController.setGraph(graphId)方法，
+//     该方法主要是构建NavGraph。
 public abstract class Navigator<D extends NavDestination> {
     /**
      * This annotation should be added to each Navigator subclass to denote the default name used
@@ -190,6 +195,6 @@ public abstract class Navigator<D extends NavDestination> {
          * @param backStackEffect
          */
         void onNavigatorNavigated(@NonNull Navigator navigator, @IdRes int destId,
-                @BackStackEffect int backStackEffect);
+                                  @BackStackEffect int backStackEffect);
     }
 }

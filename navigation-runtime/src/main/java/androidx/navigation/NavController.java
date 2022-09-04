@@ -26,6 +26,7 @@ import androidx.annotation.NavigationRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.TaskStackBuilder;
+import androidx.core.util.Pair;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -370,6 +371,7 @@ public class NavController {
      * @see #getGraph
      */
     public void setGraph(@NavigationRes int graphResId) {
+        // 其中调用getNavInflater方法创建NavInflater对象，用于解析导航配置xml
         mGraph = getNavInflater().inflate(graphResId);
         mGraphId = graphResId;
         onGraphCreated();
@@ -390,7 +392,7 @@ public class NavController {
         mGraphId = 0;
         onGraphCreated();
     }
-
+// (2)调用onGraphCreated主要是显示一个导航Fragment视图。
     private void onGraphCreated() {
         if (mBackStackToRestore != null) {
             for (int destinationId : mBackStackToRestore) {
@@ -399,6 +401,8 @@ public class NavController {
                     throw new IllegalStateException("unknown destination during restore: "
                             + mContext.getResources().getResourceName(destinationId));
                 }
+                // 其中可以看到将目标对象放到了一个回退栈当中了
+                // 这点就是一个非常核心的导航思想了，也就是都会根据这个回退栈来进行导航处理。
                 mBackStack.add(node);
             }
             mBackStackToRestore = null;
@@ -408,6 +412,7 @@ public class NavController {
             if (!deepLinked) {
                 // Navigate to the first destination in the graph
                 // if we haven't deep linked to a destination
+                // (2)调用navigate方法，显示第一个Fragment。即在Navigation文件里，属性app:startDestination的Fragment。所以最终都会走到navigate导航方法。
                 mGraph.navigate(null, null);
             }
         }
@@ -574,10 +579,12 @@ public class NavController {
      * @param navOptions special options for this navigation operation
      */
     public void navigate(@IdRes int resId, @Nullable Bundle args, @Nullable NavOptions navOptions) {
+        // (1)如果回退栈为null返回NavGraph，不为null返回回退栈中的最后一项。
         NavDestination currentNode = mBackStack.isEmpty() ? mGraph : mBackStack.peekLast();
         if (currentNode == null) {
             throw new IllegalStateException("no current navigation node");
         }
+        // (2)根据id，获取对应的NavAction。然后在通过NavAction获取目的地id。
         @IdRes int destId = resId;
         final NavAction navAction = currentNode.getAction(resId);
         if (navAction != null) {
@@ -595,7 +602,7 @@ public class NavController {
             throw new IllegalArgumentException("Destination id == 0 can only be used"
                     + " in conjunction with navOptions.popUpTo != 0");
         }
-
+        // (4)利用目的地ID属性，通过findDestination方法，找到准备导航的目的地。
         NavDestination node = findDestination(destId);
         if (node == null) {
             final String dest = NavDestination.getDisplayName(mContext, destId);
@@ -614,6 +621,7 @@ public class NavController {
                 popBackStack(navOptions.getPopUpTo(), navOptions.isPopUpToInclusive());
             }
         }
+        // 最终会调用到这个navigate方法()：
         node.navigate(args, navOptions);
     }
 

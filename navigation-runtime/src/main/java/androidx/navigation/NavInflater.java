@@ -101,6 +101,9 @@ public class NavInflater {
      * @param graphResId
      * @return
      */
+    // 根据传入的XML资源id构建NavGraph，NavGraph组成Fragment路由的导航地图，而NavDestination代表了导航的每一个目的地。
+    // 在解析完NavDestination后，需要要求NavDestination为NavGraph，即NavGraph是NavDestination的子类。
+    // 而且在NavGraph内部存储了NavDestination信息
     @SuppressLint("ResourceType")
     public NavGraph inflate(@NavigationRes int graphResId) {
         Resources res = mContext.getResources();
@@ -117,11 +120,13 @@ public class NavInflater {
             }
 
             String rootElement = parser.getName();
+            // 上面的inflate方法内部会继续调用inflate方法。
             NavDestination destination = inflate(res, parser, attrs);
             if (!(destination instanceof NavGraph)) {
                 throw new IllegalArgumentException("Root element <" + rootElement + ">"
                         + " did not inflate into a NavGraph");
             }
+            //最终解析到了目的地，并转换成NavGraph对象
             return (NavGraph) destination;
         } catch (Exception e) {
             throw new RuntimeException("Exception inflating "
@@ -134,14 +139,17 @@ public class NavInflater {
 
     private NavDestination inflate(Resources res, XmlResourceParser parser, AttributeSet attrs)
             throws XmlPullParserException, IOException {
+        // (1)getNavigator方法获取都Navigator实例，该实例在构建NavController是被添加进去，这里获取的是FragmentNavigator对象。
         Navigator navigator = mNavigatorProvider.getNavigator(parser.getName());
+        // (2)createDestination方法，会调用FragmentNavigator的createDestination构建Destination对象。
         final NavDestination dest = navigator.createDestination();
-
+        // (3)onInflate方法，调用FragmentNavigator.Destination的方法获取设置的Fragment的类名。
         dest.onInflate(mContext, attrs);
 
         final int innerDepth = parser.getDepth() + 1;
         int type;
         int depth;
+        // (4)while循环内部通过递归构建导航图。
         while ((type = parser.next()) != XmlPullParser.END_DOCUMENT
                 && ((depth = parser.getDepth()) >= innerDepth
                 || type != XmlPullParser.END_TAG)) {

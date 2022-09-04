@@ -22,13 +22,13 @@ import android.os.Bundle;
 import androidx.annotation.NavigationRes;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import android.app.Fragment;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import androidx.fragment.app.Fragment;
 import androidx.navigation.NavController;
 import androidx.navigation.NavGraph;
 import androidx.navigation.NavHost;
@@ -179,7 +179,7 @@ public class NavHostFragment extends Fragment implements NavHost {
     }
 
     @Override
-    public void onAttach(Context context) {
+    public void onAttach(@NonNull Context context) {
         super.onAttach(context);
         // TODO This feature should probably be a first-class feature of the Fragment system,
         // but it can stay here until we can add the necessary attr resources to
@@ -194,12 +194,17 @@ public class NavHostFragment extends Fragment implements NavHost {
         super.onCreate(savedInstanceState);
         final Context context = getContext();
 
+        // 初始化NavController，NavController为导航的控制类，核心类
         mNavController = new NavController(context);
+        // 在NavigatorProvider中以键值对保存FragmentNavigator类至HashMap当中
+        // 1.其中mNavigatorProvider是NavController中的全局变量，内部通过HashMap键值对的形式保存Navigator类。
         mNavController.getNavigatorProvider().addNavigator(createFragmentNavigator());
 
         Bundle navState = null;
+        // savedInstanceState不为空时候，恢复controller的状态
         if (savedInstanceState != null) {
             navState = savedInstanceState.getBundle(KEY_NAV_CONTROLLER_STATE);
+            // 当mDefaltNavHost为true，将会被设置为主导航fragment。可以拦截返回键事件(back事件)。
             if (savedInstanceState.getBoolean(KEY_DEFAULT_NAV_HOST, false)) {
                 mDefaultNavHost = true;
                 getFragmentManager().beginTransaction().setPrimaryNavigationFragment(this).commit();
@@ -212,6 +217,7 @@ public class NavHostFragment extends Fragment implements NavHost {
         } else {
             final Bundle args = getArguments();
             final int graphId = args != null ? args.getInt(KEY_GRAPH_ID) : 0;
+            // 将graph设置给navController，构建NavGraph
             if (graphId != 0) {
                 mNavController.setGraph(graphId);
             } else {
@@ -228,11 +234,13 @@ public class NavHostFragment extends Fragment implements NavHost {
      * subclasses.
      * @return a new instance of a FragmentNavigator
      */
+    // 2.createFragmentNavigator方法，构建了FragmentNavigator对象，其中抽象类Navigator还有个重要的实现类ActivityNavigator和NavGraphNavigator。
     @NonNull
     protected Navigator<? extends FragmentNavigator.Destination> createFragmentNavigator() {
+        // 而添加的对象为：
         return new FragmentNavigator(getContext(), getChildFragmentManager(), getId());
     }
-
+    // 该NavHostFragment的视图就只有一个FrameLayout布局， 在NavHostFragment的创建时，为它创建一个FrameLayout作为导航界面的载体
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
@@ -255,7 +263,10 @@ public class NavHostFragment extends Fragment implements NavHost {
         // When added via XML, the parent is null and our view is the root of the NavHostFragment
         // but when added programmatically, we need to set the NavController on the parent - i.e.,
         // the View that has the ID matching this NavHostFragment.
+        // (1)当通过XML添加时，父View是null，我们的view就是NavHostFragment的根。
+        // (2)但是当以代码方式添加时，需要在父级上设置NavController。
         View rootView = view.getParent() != null ? (View) view.getParent() : view;
+        // 主要是将NavController对象设置为rootView的tag。方便以后递归遍历到NavController对象，确保NavController对象的唯一。
         Navigation.setViewNavController(rootView, mNavController);
     }
 

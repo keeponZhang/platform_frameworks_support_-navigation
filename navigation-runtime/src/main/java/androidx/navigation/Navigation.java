@@ -143,6 +143,7 @@ public class Navigation {
      */
     @Nullable
     private static NavController findViewNavController(@NonNull View view) {
+        //遍历来查找
         while (view != null) {
             NavController controller = getViewNavController(view);
             if (controller != null) {
@@ -157,6 +158,7 @@ public class Navigation {
     @SuppressWarnings("unchecked")
     @Nullable
     private static NavController getViewNavController(@NonNull View view) {
+        // 此时的这个tag就是我们之前在onViewCreated()中设置的：
         Object tag = view.getTag(R.id.nav_controller_view_tag);
         NavController controller = null;
         if (tag instanceof WeakReference) {

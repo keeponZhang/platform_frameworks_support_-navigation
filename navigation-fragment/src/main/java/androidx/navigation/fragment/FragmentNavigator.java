@@ -43,6 +43,7 @@ import androidx.navigation.NavigatorProvider;
  * destination using this Navigator must set a valid Fragment class name with
  * <code>android:name</code> or {@link Destination#setFragmentClass}.
  */
+// 而FragmentNavigator看下它的类结构
 @Navigator.Name("fragment")
 public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> {
     private Context mContext;
@@ -109,9 +110,10 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
     @Override
     public void navigate(@NonNull Destination destination, @Nullable Bundle args,
                             @Nullable NavOptions navOptions) {
+        // (1)调用instantiateFragment，通过反射机制构建Fragment实例
         final Fragment frag = destination.createFragment(args);
         final FragmentTransaction ft = mFragmentManager.beginTransaction();
-
+        // (2)处理进出场等动画逻辑
         int enterAnim = navOptions != null ? navOptions.getEnterAnim() : -1;
         int exitAnim = navOptions != null ? navOptions.getExitAnim() : -1;
         int popEnterAnim = navOptions != null ? navOptions.getPopEnterAnim() : -1;
@@ -123,7 +125,7 @@ public class FragmentNavigator extends Navigator<FragmentNavigator.Destination> 
             popExitAnim = popExitAnim != -1 ? popExitAnim : 0;
             ft.setCustomAnimations(enterAnim, exitAnim, popEnterAnim, popExitAnim);
         }
-
+        //(3)最终调用FragmentManager来处理导航逻辑。
         ft.replace(mContainerId, frag);
 
         final StateFragment oldState = getState();

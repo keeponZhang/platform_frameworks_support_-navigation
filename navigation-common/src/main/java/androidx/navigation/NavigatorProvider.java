@@ -17,8 +17,8 @@
 package androidx.navigation;
 
 import android.annotation.SuppressLint;
-import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 
 /**
  * A NavigationProvider stores a set of {@link Navigator}s that are valid ways to navigate
