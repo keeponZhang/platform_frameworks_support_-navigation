@@ -44,23 +44,23 @@ import androidx.navigation.Navigator;
  * defining your app's chrome around it, e.g.:</p>
  *
  * <pre class="prettyprint">
- * &lt;androidx.drawerlayout.widget.DrawerLayout
- *        xmlns:android="http://schemas.android.com/apk/res/android"
- *        xmlns:app="http://schemas.android.com/apk/res-auto"
- *        android:layout_width="match_parent"
- *        android:layout_height="match_parent"&gt;
- *    &lt;fragment
- *            android:layout_width="match_parent"
- *            android:layout_height="match_parent"
- *            android:id="@+id/my_nav_host_fragment"
- *            android:name="androidx.navigation.fragment.NavHostFragment"
- *            app:navGraph="@navigation/nav_sample"
- *            app:defaultNavHost="true" /&gt;
- *    &lt;android.support.design.widget.NavigationView
- *            android:layout_width="wrap_content"
- *            android:layout_height="match_parent"
- *            android:layout_gravity="start"/&gt;
- * &lt;/androidx.drawerlayout.widget.DrawerLayout&gt;
+ *     <android.support.v4.widget.DrawerLayout
+ *             xmlns:android="http://schemas.android.com/apk/res/android"
+ *             xmlns:app="http://schemas.android.com/apk/res-auto"
+ *             android:layout_width="match_parent"
+ *             android:layout_height="match_parent">
+ *         <fragment
+ *                 android:layout_width="match_parent"
+ *                 android:layout_height="match_parent"
+ *                 android:id="@+id/my_nav_host_fragment"
+ *                 android:name="androidx.navigation.fragment.NavHostFragment"
+ *                 app:navGraph="@xml/nav_sample"
+ *                 app:defaultNavHost="true" />
+ *         <android.support.design.widget.NavigationView
+ *                 android:layout_width="wrap_content"
+ *                 android:layout_height="match_parent"
+ *                 android:layout_gravity="start"/>
+ *     </android.support.v4.widget.DrawerLayout>
  * </pre>
  *
  * <p>Each NavHostFragment has a {@link NavController} that defines valid navigation within
@@ -71,14 +71,12 @@ import androidx.navigation.Navigator;
  * <p>NavHostFragments register their navigation controller at the root of their view subtree
  * such that any descendant can obtain the controller instance through the {@link Navigation}
  * helper class's methods such as {@link Navigation#findNavController(View)}. View event listener
- * implementations such as {@link android.view.View.OnClickListener} within navigation destination
+ * implementations such as {@link View.OnClickListener} within navigation destination
  * fragments can use these helpers to navigate based on user interaction without creating a tight
  * coupling to the navigation host.</p>
  */
 public class NavHostFragment extends Fragment implements NavHost {
     private static final String KEY_GRAPH_ID = "android-support-nav:fragment:graphId";
-    private static final String KEY_START_DESTINATION_ARGS =
-            "android-support-nav:fragment:startDestinationArgs";
     private static final String KEY_NAV_CONTROLLER_STATE =
             "android-support-nav:fragment:navControllerState";
     private static final String KEY_DEFAULT_NAV_HOST = "android-support-nav:fragment:defaultHost";
@@ -104,7 +102,7 @@ public class NavHostFragment extends Fragment implements NavHost {
             if (findFragment instanceof NavHostFragment) {
                 return ((NavHostFragment) findFragment).getNavController();
             }
-            Fragment primaryNavFragment = findFragment.requireFragmentManager()
+            Fragment primaryNavFragment = findFragment.getFragmentManager()
                     .getPrimaryNavigationFragment();
             if (primaryNavFragment instanceof NavHostFragment) {
                 return ((NavHostFragment) primaryNavFragment).getNavController();
@@ -121,11 +119,9 @@ public class NavHostFragment extends Fragment implements NavHost {
                 + " does not have a NavController set");
     }
 
-    private NavHostController mNavController;
-    private Boolean mIsPrimaryBeforeOnCreate = null;
+    private NavController mNavController;
 
     // State that will be saved and restored
-    private int mGraphId;
     private boolean mDefaultNavHost;
 
     /**
@@ -134,31 +130,11 @@ public class NavHostFragment extends Fragment implements NavHost {
      * @param graphResId resource id of the navigation graph to inflate
      * @return a new NavHostFragment instance
      */
-    @NonNull
     public static NavHostFragment create(@NavigationRes int graphResId) {
-        return create(graphResId, null);
-    }
-
-    /**
-     * Create a new NavHostFragment instance with an inflated {@link NavGraph} resource.
-     *
-     * @param graphResId resource id of the navigation graph to inflate
-     * @param startDestinationArgs arguments to send to the start destination of the graph
-     * @return a new NavHostFragment instance
-     */
-    @NonNull
-    public static NavHostFragment create(@NavigationRes int graphResId,
-            @Nullable Bundle startDestinationArgs) {
         Bundle b = null;
         if (graphResId != 0) {
             b = new Bundle();
             b.putInt(KEY_GRAPH_ID, graphResId);
-        }
-        if (startDestinationArgs != null) {
-            if (b == null) {
-                b = new Bundle();
-            }
-            b.putBundle(KEY_START_DESTINATION_ARGS, startDestinationArgs);
         }
 
         final NavHostFragment result = new NavHostFragment();
@@ -178,102 +154,71 @@ public class NavHostFragment extends Fragment implements NavHost {
      */
     @NonNull
     @Override
-    public final NavController getNavController() {
+    public NavController getNavController() {
         if (mNavController == null) {
             throw new IllegalStateException("NavController is not available before onCreate()");
         }
         return mNavController;
     }
 
-    @CallSuper
+    /**
+     * Set a {@link NavGraph} for this navigation host's {@link NavController} by resource id.
+     * The existing graph will be replaced.
+     *
+     * @param graphResId resource id of the navigation graph to inflate
+     */
+    public void setGraph(@NavigationRes int graphResId) {
+        if (mNavController == null) {
+            Bundle args = getArguments();
+            if (args == null) {
+                args = new Bundle();
+            }
+            args.putInt(KEY_GRAPH_ID, graphResId);
+            setArguments(args);
+        } else {
+            mNavController.setGraph(graphResId);
+        }
+    }
+
     @Override
-    public void onAttach(@NonNull Context context) {
+    public void onAttach(Context context) {
         super.onAttach(context);
         // TODO This feature should probably be a first-class feature of the Fragment system,
         // but it can stay here until we can add the necessary attr resources to
         // the fragment lib.
         if (mDefaultNavHost) {
-            requireFragmentManager().beginTransaction()
-                    .setPrimaryNavigationFragment(this)
-                    .commit();
+            getFragmentManager().beginTransaction().setPrimaryNavigationFragment(this).commit();
         }
     }
 
-    @CallSuper
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        final Context context = requireContext();
+        final Context context = getContext();
 
-        mNavController = new NavHostController(context);
-        mNavController.setLifecycleOwner(this);
-        mNavController.setOnBackPressedDispatcher(requireActivity().getOnBackPressedDispatcher());
-        // Set the default state - this will be updated whenever
-        // onPrimaryNavigationFragmentChanged() is called
-        mNavController.enableOnBackPressed(
-                mIsPrimaryBeforeOnCreate != null && mIsPrimaryBeforeOnCreate);
-        mIsPrimaryBeforeOnCreate = null;
-        mNavController.setViewModelStore(getViewModelStore());
-        onCreateNavController(mNavController);
+        mNavController = new NavController(context);
+        mNavController.getNavigatorProvider().addNavigator(createFragmentNavigator());
 
         Bundle navState = null;
         if (savedInstanceState != null) {
             navState = savedInstanceState.getBundle(KEY_NAV_CONTROLLER_STATE);
             if (savedInstanceState.getBoolean(KEY_DEFAULT_NAV_HOST, false)) {
                 mDefaultNavHost = true;
-                requireFragmentManager().beginTransaction()
-                        .setPrimaryNavigationFragment(this)
-                        .commit();
+                getFragmentManager().beginTransaction().setPrimaryNavigationFragment(this).commit();
             }
         }
 
         if (navState != null) {
             // Navigation controller state overrides arguments
             mNavController.restoreState(navState);
-        }
-        if (mGraphId != 0) {
-            // Set from onInflate()
-            mNavController.setGraph(mGraphId);
         } else {
-            // See if it was set by NavHostFragment.create()
             final Bundle args = getArguments();
             final int graphId = args != null ? args.getInt(KEY_GRAPH_ID) : 0;
-            final Bundle startDestinationArgs = args != null
-                    ? args.getBundle(KEY_START_DESTINATION_ARGS)
-                    : null;
             if (graphId != 0) {
-                mNavController.setGraph(graphId, startDestinationArgs);
+                mNavController.setGraph(graphId);
+            } else {
+                mNavController.setMetadataGraph();
             }
-        }
-    }
-
-    /**
-     * Callback for when the {@link #getNavController() NavController} is created. If you
-     * support any custom destination types, their {@link Navigator} should be added here to
-     * ensure it is available before the navigation graph is inflated / set.
-     * <p>
-     * By default, this adds a {@link FragmentNavigator}.
-     * <p>
-     * This is only called once in {@link #onCreate(Bundle)} and should not be called directly by
-     * subclasses.
-     *
-     * @param navController The newly created {@link NavController}.
-     */
-    @SuppressWarnings({"WeakerAccess", "deprecation"})
-    @CallSuper
-    protected void onCreateNavController(@NonNull NavController navController) {
-        navController.getNavigatorProvider().addNavigator(
-                new DialogFragmentNavigator(requireContext(), getChildFragmentManager()));
-        navController.getNavigatorProvider().addNavigator(createFragmentNavigator());
-    }
-
-    @CallSuper
-    @Override
-    public void onPrimaryNavigationFragmentChanged(boolean isPrimaryNavigationFragment) {
-        if (mNavController != null) {
-            mNavController.enableOnBackPressed(isPrimaryNavigationFragment);
-        } else {
-            mIsPrimaryBeforeOnCreate = isPrimaryNavigationFragment;
         }
     }
 
@@ -284,13 +229,10 @@ public class NavHostFragment extends Fragment implements NavHost {
      * This is only called once in {@link #onCreate(Bundle)} and should not be called directly by
      * subclasses.
      * @return a new instance of a FragmentNavigator
-     * @deprecated Use {@link #onCreateNavController(NavController)}
      */
-    @SuppressWarnings("DeprecatedIsStillUsed")
-    @Deprecated
     @NonNull
     protected Navigator<? extends FragmentNavigator.Destination> createFragmentNavigator() {
-        return new FragmentNavigator(requireContext(), getChildFragmentManager(), getId());
+        return new FragmentNavigator(getContext(), getChildFragmentManager(), getId());
     }
 
     @Nullable
@@ -312,39 +254,33 @@ public class NavHostFragment extends Fragment implements NavHost {
         if (!(view instanceof ViewGroup)) {
             throw new IllegalStateException("created host view " + view + " is not a ViewGroup");
         }
-        Navigation.setViewNavController(view, mNavController);
-        // When added programmatically, we need to set the NavController on the parent - i.e.,
+        // When added via XML, the parent is null and our view is the root of the NavHostFragment
+        // but when added programmatically, we need to set the NavController on the parent - i.e.,
         // the View that has the ID matching this NavHostFragment.
-        if (view.getParent() != null) {
-            View rootView = (View) view.getParent();
-            if (rootView.getId() == getId()) {
-                Navigation.setViewNavController(rootView, mNavController);
-            }
-        }
+        View rootView = view.getParent() != null ? (View) view.getParent() : view;
+        Navigation.setViewNavController(rootView, mNavController);
     }
 
-    @CallSuper
     @Override
-    public void onInflate(@NonNull Context context, @NonNull AttributeSet attrs,
-            @Nullable Bundle savedInstanceState) {
+    public void onInflate(Context context, AttributeSet attrs, Bundle savedInstanceState) {
         super.onInflate(context, attrs, savedInstanceState);
 
-        final TypedArray navHost = context.obtainStyledAttributes(attrs, R.styleable.NavHost);
-        final int graphId = navHost.getResourceId(R.styleable.NavHost_navGraph, 0);
-        if (graphId != 0) {
-            mGraphId = graphId;
-        }
-        navHost.recycle();
-
         final TypedArray a = context.obtainStyledAttributes(attrs, R.styleable.NavHostFragment);
+        final int graphId = a.getResourceId(R.styleable.NavHostFragment_navGraph, 0);
         final boolean defaultHost = a.getBoolean(R.styleable.NavHostFragment_defaultNavHost, false);
+
+        if (graphId != 0) {
+            setGraph(graphId);
+        }
         if (defaultHost) {
             mDefaultNavHost = true;
+            if (isAdded()) {
+                getFragmentManager().beginTransaction().setPrimaryNavigationFragment(this).commit();
+            }
         }
         a.recycle();
     }
 
-    @CallSuper
     @Override
     public void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
